@@ -1,5 +1,9 @@
+import os
+import subprocess
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 from conftest import member, upload
 from test_workflows import propose
@@ -61,3 +65,27 @@ def test_parallel_schedulers_claim_once(app, owner):
         result = [f.result() for f in futures]
     assert sum(map(len, result)) == 1
     assert len(owner.get("/api/automations").json()["runs"]) == 1
+
+
+def test_separate_worker_process_executes_due_schedule(app, owner):
+    doc = upload(owner, "A policy that needs a scheduled review.").json()["id"]
+    with app.state.factory.begin() as db:
+        db.get(Document, doc).created = time.time() - 31 * 86400
+    schedule(owner)
+    env = {
+        **os.environ,
+        "PYTHONPATH": str(Path("src").resolve()),
+        "AIVORA_ENV": "development",
+        "AIVORA_DATABASE_URL": app.state.settings.database_url,
+    }
+    result = subprocess.run(
+        [sys.executable, "-m", "aivora.worker", "--once"],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "Completed 1 automation" in result.stdout
+    data = owner.get("/api/automations").json()
+    assert len(data["tasks"]) == 1 and len(data["runs"]) == 1

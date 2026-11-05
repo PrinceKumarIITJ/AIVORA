@@ -4,7 +4,7 @@ Local verification on 6 November 2026, Windows, Python 3.11.5. Dependencies were
 
 | Check | Result |
 | --- | --- |
-| Backend/security suite | 39 tests passed |
+| Backend/security suite | 40 tests passed |
 | Synthetic retrieval/ACL evaluations | 12/12 cases passed |
 | Real headless Chrome workflow | Passed onboarding, upload, cited Q&A/source preview, employee invitation, requests, separate approval, resolution, schedules, token creation/revocation, settings and audit |
 | Responsive interface | Desktop and 390 px mobile screenshots inspected; no horizontal page overflow |
@@ -15,6 +15,7 @@ Local verification on 6 November 2026, Windows, Python 3.11.5. Dependencies were
 | Compose services | Separate validation web and scheduler started healthy |
 | Container HTTP smoke | Passed health, auth, ingestion, LangGraph/citations, automation and audit |
 | Cross-login browser isolation | A delayed answer from the previous session cannot enter the next user's chat |
+| Separate worker process | A standalone `worker --once` process executes a due schedule against shared durable storage |
 | Backup/restore | Included in backend suite; restored database supports login and document reads |
 
 The synthetic benchmark checks expected passages, source IDs, absent evidence and restricted/cross-tenant content. It is not an open-ended answer-quality score. A sample offline run recorded p50 22.245 ms and p95 90.26 ms across only 12 temporary-database requests; these figures are not cloud or production load benchmarks. Full local results are generated into ignored `artifacts/evaluation.json`.
