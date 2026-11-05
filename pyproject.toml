@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aivora"
+version = "0.1.0"
+description = "Organization-neutral knowledge and approved-workflow workspace"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi==0.162.0", "uvicorn==0.54.0", "SQLAlchemy==2.0.57",
+  "pydantic==2.14.3", "httpx==0.28.1", "python-multipart==0.0.33",
+  "pypdf==6.21.4", "python-dotenv==1.2.4",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==9.2.0"]
+e2e = ["playwright>=1.49,<2"]
+postgres = ["psycopg[binary]>=3.2,<4"]
+semantic = ["sentence-transformers>=3,<7"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+aivora = ["static/*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

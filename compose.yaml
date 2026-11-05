@@ -1,0 +1,33 @@
+name: aivora
+services:
+  web:
+    build: .
+    ports:
+      - "127.0.0.1:8090:8090"
+    environment: &environment
+      AIVORA_DATABASE_URL: sqlite:////app/data/aivora.db
+      AIVORA_ORIGIN: http://127.0.0.1:8090
+      AIVORA_PROVIDER: ${AIVORA_PROVIDER:-extractive}
+      AIVORA_MODEL: ${AIVORA_MODEL:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+    volumes:
+      - workspace-data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/api/health',timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+  scheduler:
+    build: .
+    command: ["python", "-m", "aivora.worker"]
+    environment: *environment
+    volumes:
+      - workspace-data:/app/data
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  workspace-data:
