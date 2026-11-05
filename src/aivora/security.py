@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from fastapi import HTTPException, Request
 from sqlalchemy.orm import Session
+
 from .db import Audit, Credential, User
 
 
@@ -31,10 +32,25 @@ def password_matches(password, encoded):
 def issue_session(db, user, response, settings):
     token = secrets.token_urlsafe(32)
     csrf = secrets.token_urlsafe(32)
-    db.add(Credential(id=digest(token), user_id=user.id, kind="session", csrf=csrf,
-                      scopes="[]", expires=time.time() + 43200))
-    response.set_cookie("aivora_session", token, httponly=True, secure=settings.cookie_secure,
-                        samesite="strict", max_age=43200, path="/")
+    db.add(
+        Credential(
+            id=digest(token),
+            user_id=user.id,
+            kind="session",
+            csrf=csrf,
+            scopes="[]",
+            expires=time.time() + 43200,
+        )
+    )
+    response.set_cookie(
+        "aivora_session",
+        token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="strict",
+        max_age=43200,
+        path="/",
+    )
     return csrf
 
 
@@ -49,8 +65,11 @@ def authenticate(request: Request, db: Session, settings):
     bearer = auth.startswith("Bearer ")
     raw = auth[7:] if bearer else request.cookies.get("aivora_session", "")
     credential = db.get(Credential, digest(raw)) if raw else None
-    if (not credential or credential.expires <= time.time()
-            or credential.kind != ("api" if bearer else "session")):
+    if (
+        not credential
+        or credential.expires <= time.time()
+        or credential.kind != ("api" if bearer else "session")
+    ):
         raise HTTPException(401, "Please sign in again")
     user = db.get(User, credential.user_id)
     if not user or not user.active:
@@ -68,6 +87,7 @@ def require_role(principal, *roles):
 
 def require_scope(principal, scope):
     import json
+
     if principal.credential.kind == "api" and scope not in json.loads(principal.credential.scopes):
         raise HTTPException(403, "API token is missing the required scope")
 

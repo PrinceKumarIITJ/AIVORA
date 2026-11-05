@@ -11,10 +11,11 @@ dependencies = [
   "fastapi==0.162.0", "uvicorn==0.54.0", "SQLAlchemy==2.0.57",
   "pydantic==2.14.3", "httpx==0.28.1", "python-multipart==0.0.33",
   "pypdf==6.21.4", "python-dotenv==1.2.4",
+  "langgraph==1.2.20", "mcp==1.30.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest==9.2.0"]
+dev = ["pytest==9.2.0", "ruff==0.17.4"]
 e2e = ["playwright>=1.49,<2"]
 postgres = ["psycopg[binary]>=3.2,<4"]
 semantic = ["sentence-transformers>=3,<7"]
@@ -28,3 +29,10 @@ aivora = ["static/*"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

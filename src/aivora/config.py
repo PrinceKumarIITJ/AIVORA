@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+
 from dotenv import load_dotenv
 
 
@@ -43,5 +44,7 @@ class Settings:
             if settings.allow_signup:
                 raise ValueError("Disable public organization signup for production")
             # SQLite has no database-level tenant isolation; do not imply otherwise.
-            raise ValueError("v0.1 is a local pilot; production requires the hardening gates in docs/OPERATIONS.md")
+            raise ValueError(
+                "v0.1 is a local pilot; production requires the hardening gates in docs/OPERATIONS.md"
+            )
         return settings

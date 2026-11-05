@@ -3,9 +3,8 @@
 Run with a Python environment containing AIVORA dependencies and Playwright.
 Uses Chrome if installed; otherwise Playwright Chromium. Never touches live company data.
 """
-import os
+
 import socket
-import sys
 import tempfile
 import threading
 import time
@@ -13,6 +12,7 @@ from pathlib import Path
 
 import uvicorn
 from playwright.sync_api import expect, sync_playwright
+
 from aivora.api import create_app
 from aivora.config import Settings
 
@@ -24,20 +24,28 @@ def run():
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
         origin = f"http://127.0.0.1:{port}"
-        app = create_app(Settings(database_url="sqlite:///" + (Path(temp) / "test.db").as_posix(), origin=origin))
+        app = create_app(
+            Settings(
+                database_url="sqlite:///" + (Path(temp) / "test.db").as_posix(),
+                origin=origin,
+            )
+        )
         server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error"))
         thread = threading.Thread(target=server.run, kwargs={"sockets": [sock]}, daemon=True)
         thread.start()
         for _ in range(100):
             if server.started:
                 break
-            time.sleep(.05)
+            time.sleep(0.05)
         if not server.started:
             raise RuntimeError("Temporary HTTP server did not start")
         try:
             with sync_playwright() as p:
                 chrome = Path("C:/Program Files/Google/Chrome/Application/chrome.exe")
-                browser = p.chromium.launch(headless=True, **({"executable_path": str(chrome)} if chrome.exists() else {}))
+                browser = p.chromium.launch(
+                    headless=True,
+                    **({"executable_path": str(chrome)} if chrome.exists() else {}),
+                )
                 owner_context = browser.new_context(viewport={"width": 1440, "height": 1000})
                 owner = owner_context.new_page()
                 owner.on("pageerror", lambda error: errors.append(str(error)))
@@ -49,15 +57,27 @@ def run():
                 owner.get_by_label("Work email").fill("owner@browser.test")
                 owner.get_by_label("Password", exact=True).fill("browser-test-password-123")
                 owner.locator("#auth-form button[type=submit]").click()
-                expect(owner.get_by_role("heading", name="Good to see you, Taylor.")).to_be_visible()
+                expect(
+                    owner.get_by_role("heading", name="Good to see you, Taylor.")
+                ).to_be_visible()
                 owner.locator('[data-nav="knowledge"]').click()
                 owner.get_by_role("button", name="Add document").click()
                 owner.get_by_label("Document title").fill("Leave handbook")
-                owner.locator('input[type="file"]').set_input_files({"name": "leave.md", "mimeType": "text/markdown", "buffer": b"Annual leave allowance is 21 days per year. Ask your manager to approve leave."})
+                owner.locator('input[type="file"]').set_input_files(
+                    {
+                        "name": "leave.md",
+                        "mimeType": "text/markdown",
+                        "buffer": b"Annual leave allowance is 21 days per year. Ask your manager to approve leave.",
+                    }
+                )
                 owner.get_by_role("button", name="Upload and index").click()
-                expect(owner.locator("#main").get_by_role("button", name="Leave handbook")).to_be_visible()
+                expect(
+                    owner.locator("#main").get_by_role("button", name="Leave handbook")
+                ).to_be_visible()
                 owner.locator('[data-nav="chat"]').click()
-                owner.get_by_role("textbox", name="Your question").fill("What is the annual leave allowance?")
+                owner.get_by_role("textbox", name="Your question").fill(
+                    "What is the annual leave allowance?"
+                )
                 owner.get_by_role("button", name="Send question").click()
                 expect(owner.locator(".message.assistant .message-text")).to_contain_text("21 days")
                 owner.locator(".citation").first.click()
@@ -77,19 +97,27 @@ def run():
                 employee.get_by_label("Work email").fill("employee@browser.test")
                 employee.get_by_label("Password", exact=True).fill("browser-test-password-456")
                 employee.get_by_role("button", name="Accept invitation").click()
-                expect(employee.get_by_role("heading", name="Good to see you, Jordan.")).to_be_visible()
+                expect(
+                    employee.get_by_role("heading", name="Good to see you, Jordan.")
+                ).to_be_visible()
                 expect(employee.locator('[data-nav="team"]')).to_have_count(0)
                 employee.locator('[data-nav="workflows"]').click()
                 employee.get_by_role("button", name="Start request").first.click()
                 employee.get_by_label("Request title").fill("Design application access")
-                employee.get_by_label("Details").fill("Need access to the design application for project work.")
+                employee.get_by_label("Details").fill(
+                    "Need access to the design application for project work."
+                )
                 employee.get_by_role("button", name="Submit for approval").click()
                 expect(employee.locator("#main")).to_contain_text("Waiting for a separate reviewer")
-                expect(employee.get_by_role("button", name="Approve & create ticket", exact=True)).to_have_count(0)
+                expect(
+                    employee.get_by_role("button", name="Approve & create ticket", exact=True)
+                ).to_have_count(0)
                 owner.locator('[data-nav="requests"]').click()
                 owner.get_by_role("button", name="Approve & create ticket", exact=True).click()
                 owner.get_by_label("Reviewer note").fill("Approved for the project")
-                owner.get_by_role("button", name="Approve & create internal ticket", exact=True).click()
+                owner.get_by_role(
+                    "button", name="Approve & create internal ticket", exact=True
+                ).click()
                 expect(owner.locator("#main")).to_contain_text("executed")
                 owner.get_by_role("button", name="Mark resolved").click()
                 expect(owner.locator("#main")).to_contain_text("resolved")
@@ -100,7 +128,9 @@ def run():
                 owner.get_by_label("Name", exact=True).fill("Review old policies")
                 owner.get_by_role("button", name="Create schedule").click()
                 owner.get_by_role("button", name="Run due schedules").click()
-                expect(owner.locator("#main")).to_contain_text("Created 0 internal follow-up task(s)")
+                expect(owner.locator("#main")).to_contain_text(
+                    "Created 0 internal follow-up task(s)"
+                )
                 owner.locator('[data-nav="integrations"]').click()
                 owner.get_by_label("Token name").fill("Browser test integration")
                 owner.get_by_role("button", name="Generate token").click()
@@ -121,14 +151,43 @@ def run():
                 owner.set_viewport_size({"width": 390, "height": 844})
                 expect(owner.locator(".nav")).to_be_visible()
                 owner.screenshot(path=str(artifacts / "overview-mobile.png"), full_page=True)
-                assert owner.evaluate("document.documentElement.scrollWidth <= window.innerWidth"), "Mobile page overflows horizontally"
+                assert owner.evaluate(
+                    "document.documentElement.scrollWidth <= window.innerWidth"
+                ), "Mobile page overflows horizontally"
+                # A late answer from a previous login must not enter another user's workspace.
+                owner.set_viewport_size({"width": 1440, "height": 1000})
+                held = []
+                owner.route("**/api/chat", lambda route: held.append(route))
+                owner.locator('[data-nav="chat"]').click()
+                owner.get_by_role("textbox", name="Your question").fill("Annual leave allowance")
+                owner.get_by_role("button", name="Send question").click()
+                owner.get_by_role("button", name="Sign out", exact=True).click()
+                owner.get_by_label("Work email").fill("employee@browser.test")
+                owner.get_by_label("Password", exact=True).fill("browser-test-password-456")
+                owner.locator("#auth-form button[type=submit]").click()
+                expect(
+                    owner.get_by_role("heading", name="Good to see you, Jordan.")
+                ).to_be_visible()
+                assert len(held) == 1
+                held[0].fulfill(
+                    status=200,
+                    content_type="application/json",
+                    body='{"answer":"OLD-SESSION-PRIVATE-ANSWER","citations":[],"conversation_id":"old-session"}',
+                )
+                owner.locator('[data-nav="chat"]').click()
+                expect(owner.locator("#main")).not_to_contain_text("OLD-SESSION-PRIVATE-ANSWER")
+                expect(
+                    owner.get_by_role("heading", name="What would you like to know?")
+                ).to_be_visible()
                 browser.close()
                 assert not errors, errors
         finally:
             server.should_exit = True
             thread.join(timeout=10)
             sock.close()
-    print("PASS: browser onboarding, ingestion, cited answer, source preview, invitation, employee request, separate approval, ticket resolution, automation, token creation/revocation, settings, audit and responsive layout")
+    print(
+        "PASS: browser onboarding, ingestion, cited answer, source preview, invitation, employee request, separate approval, ticket resolution, automation, token creation/revocation, settings, audit and responsive layout"
+    )
 
 
 if __name__ == "__main__":

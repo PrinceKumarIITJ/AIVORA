@@ -10,3 +10,8 @@ dist/
 data/
 artifacts/
 *.log
+.ruff_cache/
+*.egg-info/
+*.db
+*.db-wal
+*.db-shm

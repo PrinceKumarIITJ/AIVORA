@@ -1,14 +1,18 @@
 import time
 from concurrent.futures import ThreadPoolExecutor
-from sqlalchemy import select
-from aivora.automation import run_due
-from aivora.db import Action, Automation, Document
+
 from conftest import member, upload
 from test_workflows import propose
 
+from aivora.automation import run_due
+from aivora.db import Action, Automation, Document
+
 
 def schedule(owner, kind="document_review"):
-    r = owner.post("/api/automations", json={"name": "Follow up", "kind": kind, "interval_hours": 24})
+    r = owner.post(
+        "/api/automations",
+        json={"name": "Follow up", "kind": kind, "interval_hours": 24},
+    )
     assert r.status_code == 201
     return r.json()["id"]
 

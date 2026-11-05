@@ -1,7 +1,9 @@
 """Persistent automation scheduler. Run separately from the web process."""
+
 import argparse
 import signal
 import threading
+
 from .automation import run_due
 from .config import Settings
 from .db import database
@@ -23,7 +25,10 @@ def main():
                     print(f"Completed {len(results)} automation schedule(s)", flush=True)
             except Exception as error:
                 # Do not log raw exception payloads, which can include SQL parameters.
-                print(f"Scheduler iteration failed ({type(error).__name__}); will retry", flush=True)
+                print(
+                    f"Scheduler iteration failed ({type(error).__name__}); will retry",
+                    flush=True,
+                )
                 if args.once:
                     raise SystemExit(1) from None
             if args.once:

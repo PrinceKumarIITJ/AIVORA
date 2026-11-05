@@ -1,6 +1,6 @@
 # Implementation roadmap
 
-All milestones below are pending. Build vertical slices with working UI, API, persistence and tests before adding another layer.
+The table describes the full enterprise target. v0.1 now ships local organization identity, scoped knowledge, grounded chat, approved internal tickets, durable follow-up automation and local MCP/REST integration. See README and IMPLEMENTATION.md for exact behavior. Enterprise SSO, PostgreSQL RLS/indexes, external connectors and production deployment remain pending; target milestones are not all complete.
 
 | Milestone | Deliverable | Acceptance evidence |
 | --- | --- | --- |
@@ -33,4 +33,4 @@ Resume claims should describe implemented capabilities and measured results only
 
 ## Next handoff
 
-Create an empty GitHub repository named `aivora` (or provide a preferred name) and share its URL. Implementation can continue locally without GitHub access; remote pushes require a configured authenticated account. No existing project repository should be reused or modified.
+Repository connected: https://github.com/PrinceKumarIITJ/AIVORA. Architecture and working application milestones have been pushed to main. Existing LARK/LISA repositories remain unchanged.
