@@ -69,12 +69,20 @@ async def exercise(url, token):
                 },
             )
             assert rejected.isError
-            team=await session.call_tool("list_agent_teams",{})
+            team = await session.call_tool("list_agent_teams", {})
             assert not team.isError and "Cross-department operations" in str(team.content)
-            new=await session.call_tool("start_mission",{"title":"MCP business objective","objective":"Review operational evidence and prepare a documented improvement plan.","request_key":"mcp-mission-001","mode":"evidence"})
+            new = await session.call_tool(
+                "start_mission",
+                {
+                    "title": "MCP business objective",
+                    "objective": "Review operational evidence and prepare a documented improvement plan.",
+                    "request_key": "mcp-mission-001",
+                    "mode": "evidence",
+                },
+            )
             assert not new.isError
-            result=json.loads(new.content[0].text)
-            status=await session.call_tool("mission_status",{"mission_id":result["id"]})
+            result = json.loads(new.content[0].text)
+            status = await session.call_tool("mission_status", {"mission_id": result["id"]})
             assert not status.isError and "queued" in str(status.content)
 
 

@@ -251,8 +251,8 @@ def test_provider_quota_backoff_preserves_checkpoints_and_refunds_rejected_reser
 
 
 def test_nonplanner_cannot_propose_tool_actions():
-    researcher=DEFAULT_TEAM.definition.agents[1]
-    payload={"evidence":[],"departments":["General"],"connectors":[]}
+    researcher = DEFAULT_TEAM.definition.agents[1]
+    payload = {"evidence": [], "departments": ["General"], "connectors": []}
     output = AgentOutput(
         summary="A test output",
         actions=[

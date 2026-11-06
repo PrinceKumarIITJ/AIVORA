@@ -133,7 +133,7 @@ function authView(mode = "login") {
       state.csrf = r.csrf;
       state.me = await api("/me");
       history.replaceState(null, "", location.pathname);
-      await navigate("overview");
+      await navigate("missions");
     } catch (e) {
       $("#auth-error").textContent = e.message;
     }
@@ -756,7 +756,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   try {
     state.me = await api("/me");
     state.csrf = state.me.csrf;
-    await navigate("overview");
+    await navigate("missions");
   } catch (_) {
     authView();
   }

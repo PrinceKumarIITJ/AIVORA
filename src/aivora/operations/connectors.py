@@ -61,6 +61,9 @@ def allowed(connector, user):
 
 def validate_config(kind, config):
     if kind == "github":
+        parts = config.get("repository", "").split("/")
+        if any(part in {".", ".."} for part in parts):
+            raise ValueError("Repository path segments cannot be traversal components")
         if set(config) != {"repository"} or not re.fullmatch(
             r"[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}", config.get("repository", "")
         ):
@@ -153,3 +156,61 @@ def execute_external(settings, connector, operation_id, arguments):
         raise UncertainDelivery(
             "Connector accepted a request but returned no verifiable receipt"
         ) from None
+
+
+def reconcile_external(settings, connector, operation_id):
+    config = json.loads(connector.config_json)
+    headers = {"Authorization": "Bearer " + decrypt(settings, connector.secret_ciphertext)}
+    try:
+        with httpx.Client(timeout=20, follow_redirects=False, trust_env=False) as client:
+            if connector.kind == "github":
+                result = client.get(
+                    f"https://api.github.com/repos/{config['repository']}/issues",
+                    headers={**headers, "Accept": "application/vnd.github+json"},
+                    params={
+                        "state": "all",
+                        "per_page": 100,
+                        "sort": "created",
+                        "direction": "desc",
+                    },
+                )
+                result.raise_for_status()
+                items = result.json()
+                matches = [
+                    i
+                    for i in items
+                    if f"<!-- aivora-operation:{operation_id} -->" in str(i.get("body") or "")
+                    and "pull_request" not in i
+                ]
+                return (
+                    {
+                        "number": matches[0]["number"],
+                        "url": matches[0]["html_url"],
+                        "receipt": "correlation_marker_verified",
+                    }
+                    if len(matches) == 1
+                    else None
+                )
+            result = client.get(
+                "https://slack.com/api/conversations.history",
+                headers=headers,
+                params={"channel": config["channel"], "limit": 100},
+            )
+            result.raise_for_status()
+            body = result.json()
+            if not body.get("ok"):
+                raise ConnectorError("History access is not available for reconciliation")
+            matches = [
+                m for m in body.get("messages", []) if m.get("client_msg_id") == operation_id
+            ]
+            return (
+                {
+                    "channel": config["channel"],
+                    "timestamp": matches[0]["ts"],
+                    "receipt": "client_message_id_verified",
+                }
+                if len(matches) == 1
+                else None
+            )
+    except (httpx.HTTPError, ValueError, KeyError, TypeError):
+        raise ConnectorError("Could not verify a receipt in the configured destination") from None

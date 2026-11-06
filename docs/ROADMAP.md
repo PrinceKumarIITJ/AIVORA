@@ -1,6 +1,8 @@
 # Implementation roadmap
 
-The table describes the full enterprise target. v0.1 now ships local organization identity, scoped knowledge, grounded chat, approved internal tickets, durable follow-up automation and local MCP/REST integration. See README and IMPLEMENTATION.md for exact behavior. Enterprise SSO, PostgreSQL RLS/indexes, external connectors and production deployment remain pending; target milestones are not all complete.
+**v0.2 delivered:** configurable specialist teams, coordinator-selected read tools, parallel research/analysis, durable mission checkpoints, model/credential profiles, quantified CSV evidence, feedback rounds, versioned artifacts, exact-action approvals, GitHub/Slack adapters, internal work outcomes, signed event triggers and recurring missions. Six actual Groq agents have completed a synthetic objective. Read [Multi-agent operations](MULTI_AGENT_OPERATIONS.md) for the implemented system. The milestone table below remains the longer-term enterprise deployment target, not a claim that SSO/RLS or external account certification is complete.
+
+The table describes the full enterprise target. The earlier v0.1 knowledge, identity, internal-ticket and MCP/REST capabilities remain available alongside v0.2 operations. Enterprise SSO, PostgreSQL RLS/indexes, live external-account verification and production deployment remain pending; target milestones are not all complete.
 
 | Milestone | Deliverable | Acceptance evidence |
 | --- | --- | --- |

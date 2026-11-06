@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from typing import Annotated, TypedDict
 
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import RetryPolicy
 from langsmith import tracing_context
 from sqlalchemy import select, update
 
@@ -272,6 +273,57 @@ def check_lease(db, mission_id, lease):
     return mission, user
 
 
+def apply_read_requests(db, mission, user, output, settings):
+    context = json.loads(mission.context_json)
+    known = {e["id"] for e in context["evidence"]}
+    for request in output.tool_requests:
+        if request.tool == "knowledge.search":
+            for source in retrieve(db, user, request.query, settings.semantic_model, limit=3):
+                if source["chunk_id"] in known:
+                    continue
+                if len([e for e in context["evidence"] if e["type"] == "document"]) >= 12:
+                    break
+                context["evidence"].append(
+                    {
+                        "id": source["chunk_id"],
+                        "resource_id": source["document_id"],
+                        "type": "document",
+                        "title": source["title"],
+                        "version": source["version"],
+                        "page": source["page"],
+                        "text": source["text"],
+                    }
+                )
+                known.add(source["chunk_id"])
+        else:
+            evidence = next(
+                (
+                    e
+                    for e in context["evidence"]
+                    if e["type"] == "dataset" and e["resource_id"] == request.dataset_id
+                ),
+                None,
+            )
+            value = db.scalar(
+                select(Dataset).where(
+                    Dataset.id == request.dataset_id,
+                    Dataset.org_id == user.org_id,
+                    dataset_visible(user),
+                )
+            )
+            if not value or not evidence:
+                raise MissionBlocked("dataset_not_accessible")
+            calculated = profile(
+                json.loads(value.columns_json),
+                json.loads(value.rows_json),
+                request.group_by,
+                request.metric,
+            )
+            evidence.setdefault("agent_analyses", []).append(calculated)
+        event(db, mission, "tool.completed", detail=request.tool)
+    mission.context_json = json.dumps(context, ensure_ascii=False)
+
+
 def execute_step(factory, settings, mission_id, lease, agent, outputs):
     with factory.begin() as db:
         mission, user = check_lease(db, mission_id, lease)
@@ -285,33 +337,56 @@ def execute_step(factory, settings, mission_id, lease, agent, outputs):
         if step.attempts >= 3:
             raise MissionBlocked("agent_retry_limit")
         context = json.loads(mission.context_json)
+        prior_error = (
+            db.scalar(
+                select(MissionEvent.detail)
+                .where(
+                    MissionEvent.mission_id == mission_id,
+                    MissionEvent.agent_id == agent.id,
+                    MissionEvent.event == "agent.failed",
+                )
+                .order_by(MissionEvent.created.desc())
+                .limit(1)
+            )
+            if step.attempts
+            else ""
+        )
         effective, identity = resolve_settings(db, settings, user.org_id)
         if mission.mode == "ai" and identity != context["model_identity"]:
             raise MissionBlocked("model_configuration_changed")
         payload = {
             "objective": mission.objective,
+            "validation_feedback": prior_error or "",
             "agent_task": agent.instructions,
             "evidence": context["evidence"],
             "departments": context["departments"],
             "connectors": context["connectors"],
             "previous_outputs": {
                 key: {
-                    "summary": value["summary"][:1200],
+                    "summary": value["summary"][:900],
                     "findings": [
-                        {**f, "statement": f["statement"][:500]}
-                        for f in value.get("findings", [])[:4]
+                        {**f, "statement": f["statement"][:400]}
+                        for f in value.get("findings", [])[:3]
                     ],
                     "actions": [
-                        {**a, "description": a["description"][:700]}
+                        {**a, "description": a["description"][:500]}
                         for a in value.get("actions", [])
                     ],
-                    "risks": [r[:300] for r in value.get("risks", [])],
+                    "risks": [r[:200] for r in value.get("risks", [])],
                     "questions": value.get("questions", [])[:3],
                     "verdict": value["verdict"],
                 }
                 for key, value in outputs.items()
             },
             "human_feedback": context.get("human_feedback", []),
+            "document_catalog": [
+                {"title": d.title, "id": d.id}
+                for d in db.scalars(
+                    select(Document).where(Document.org_id == user.org_id, visible(user)).limit(40)
+                )
+            ]
+            if agent.role == "coordinator"
+            else [],
         }
         if agent.role == "researcher":
             payload["evidence"] = [
@@ -354,6 +429,8 @@ def execute_step(factory, settings, mission_id, lease, agent, outputs):
         agents.validate_output(output, agent, payload)
         with factory.begin() as db:
             mission, user = check_lease(db, mission_id, lease)
+            if output.tool_requests:
+                apply_read_requests(db, mission, user, output, effective)
             step = db.scalar(
                 select(AgentStep).where(
                     AgentStep.mission_id == mission_id, AgentStep.agent_id == agent.id
@@ -459,7 +536,18 @@ def process_mission(factory, settings, mission_id):
                 )
                 return {"results": {agent.id: output}}
 
-            builder.add_node(agent.id, node)
+            builder.add_node(
+                agent.id,
+                node,
+                retry_policy=RetryPolicy(
+                    max_attempts=3,
+                    initial_interval=1,
+                    retry_on=lambda error: (
+                        isinstance(error, agents.AgentError)
+                        and error.code == "provider_contract_error"
+                    ),
+                ),
+            )
             if agent.depends_on:
                 builder.add_edge(agent.depends_on, agent.id)
                 parents.update(agent.depends_on)

@@ -83,6 +83,14 @@ class ActionDraft(Contract):
     connector_id: str = ""
 
 
+class ReadRequest(Contract):
+    tool: Literal["knowledge.search", "dataset.group"]
+    query: str = Field(default="", max_length=500)
+    dataset_id: str = Field(default="", max_length=36)
+    group_by: str = Field(default="", max_length=100)
+    metric: str = Field(default="", max_length=100)
+
+
 class AgentOutput(Contract):
     summary: str = Field(min_length=5, max_length=5000)
     findings: list[Finding] = Field(default_factory=list, max_length=15)
@@ -90,6 +98,7 @@ class AgentOutput(Contract):
     risks: list[str] = Field(default_factory=list, max_length=12)
     questions: list[str] = Field(default_factory=list, max_length=8)
     verdict: Literal["pass", "needs_attention", "insufficient_evidence"] = "pass"
+    tool_requests: list[ReadRequest] = Field(default_factory=list, max_length=3)
 
 
 DEFAULT_TEAM = TeamInput(

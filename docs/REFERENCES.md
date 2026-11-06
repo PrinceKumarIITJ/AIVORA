@@ -21,7 +21,7 @@ Two refinements matter: RAG reduces hallucination risk but cannot guarantee fact
 
 ## Local project reference
 
-Read the LISA backend and frontend READMEs, backend dependency configuration and top-level backend module layout. LISA documents FastAPI, LangGraph, tenant RLS, retrieval, Redis, workers and multiple interfaces. This supports reusing architectural lessons. It is not a source-code audit and does not establish that every documented feature works. No existing project files were changed or copied.
+Read the LISA backend/frontend READMEs and dependency/module layout, the LARK/LISA overview, partner capability planner and structured session memory, customer-context/funnel tool implementations, and frontend activity-trace types. These informed server-owned authority, durable mission state, multi-source investigation, numeric checks and inspectable execution. See [LISA lessons](LISA_LESSONS.md) for the mapping. This was selected source exploration, not a full audit or proof that all startup features work. Existing projects remained read-only; no company customer records or proprietary source were copied, and no startup production APIs were invoked.
 
 ## Primary technical references
 

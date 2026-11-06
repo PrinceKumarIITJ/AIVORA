@@ -13,7 +13,15 @@ from sqlalchemy.orm import Session
 
 from ..db import User
 from ..security import audit, authenticate, browser_only, require_role, require_scope
-from .connectors import ConnectorError, allowed, decrypt, encrypt, read_context, validate_config
+from .connectors import (
+    ConnectorError,
+    allowed,
+    decrypt,
+    encrypt,
+    read_context,
+    reconcile_external,
+    validate_config,
+)
 from .contracts import DEFAULT_TEAM, TEMPLATES, Contract, MissionInput, TeamInput
 from .data import dataset_visible, read_csv
 from .execution import execute_operation, review_allowed, valid_requester
@@ -115,6 +123,19 @@ def install_operations(app, factory, settings):
     def accessible(db, mission, user):
         return context_valid(db, user, json.loads(mission.context_json))
 
+    def fence(db, mission, states, status):
+        claimed = db.execute(
+            update(Mission)
+            .where(
+                Mission.id == mission.id,
+                Mission.status.in_(states),
+                Mission.iteration == mission.iteration,
+            )
+            .values(status=status, updated=time.time())
+        ).rowcount
+        if not claimed:
+            raise HTTPException(409, "Mission changed concurrently; refresh before continuing")
+
     def operation_view(db, value, user):
         work = db.scalar(select(WorkItem).where(WorkItem.operation_id == value.id))
         return {
@@ -155,7 +176,7 @@ def install_operations(app, factory, settings):
             "error_code": mission.error_code,
             "iteration": mission.iteration,
             "retry_at": mission.lease_until if mission.status == "waiting_provider" else None,
-            "outcome": mission.outcome,
+            "outcome": mission.outcome if valid else "",
             "completed_agents": sum(s.status == "completed" for s in steps),
             "total_agents": len(steps),
             "access_valid": valid,
@@ -203,6 +224,8 @@ def install_operations(app, factory, settings):
             result["evidence"] = json.loads(mission.context_json)["evidence"] if valid else []
             result["can_complete"] = (
                 valid
+                and mission.status
+                in {"ready", "review_required", "awaiting_approval", "active_work", "closing"}
                 and all(s.status == "completed" for s in steps)
                 and all(
                     o["status"] in {"succeeded", "rejected", "withdrawn"}
@@ -513,6 +536,21 @@ def install_operations(app, factory, settings):
     @router.post("/missions/{mission_id}/cancel")
     def mission_cancel(mission_id: str, p=Depends(principal), db: Session = Depends(session)):
         value = owner(db, mission_id, p.user)
+        fence(
+            db,
+            value,
+            {
+                "queued",
+                "running",
+                "waiting_provider",
+                "ready",
+                "review_required",
+                "failed",
+                "awaiting_approval",
+                "active_work",
+            },
+            "cancelling",
+        )
         if db.scalar(
             select(Operation.id).where(
                 Operation.mission_id == mission_id,
@@ -546,6 +584,7 @@ def install_operations(app, factory, settings):
             raise HTTPException(
                 422, "Review and acknowledge sharing exact arguments with authorized approvers"
             )
+        fence(db, value, {"ready", "review_required", "awaiting_approval"}, "awaiting_approval")
         rows = list(
             db.scalars(
                 select(Operation).where(
@@ -576,6 +615,7 @@ def install_operations(app, factory, settings):
             raise HTTPException(
                 409, "Only ready missions with valid sources can be refined, up to two rounds"
             )
+        fence(db, value, {"ready", "review_required"}, "refining")
         if db.scalar(
             select(Operation.id).where(
                 Operation.mission_id == mission_id,
@@ -642,6 +682,9 @@ def install_operations(app, factory, settings):
         mission_id: str, body: MissionOutcome, p=Depends(principal), db: Session = Depends(session)
     ):
         value = owner(db, mission_id, p.user)
+        fence(
+            db, value, {"ready", "review_required", "awaiting_approval", "active_work"}, "closing"
+        )
         detail = mission_view(db, value, p.user, True)
         if not detail["can_complete"] or value.status in {
             "queued",
@@ -654,6 +697,26 @@ def install_operations(app, factory, settings):
                 "Resolve or withdraw proposals and finish all internal work before closing the objective",
             )
         value.status, value.outcome, value.finished = "completed", body.outcome, time.time()
+        output = json.dumps(
+            {
+                "summary": body.outcome,
+                "findings": [],
+                "actions": [],
+                "risks": [],
+                "questions": [],
+                "verdict": "pass",
+            }
+        )
+        db.add(
+            AgentArtifact(
+                org_id=value.org_id,
+                mission_id=value.id,
+                agent_id="owner_outcome_" + secrets.token_hex(4),
+                iteration=value.iteration,
+                output_json=output,
+                content_hash=hashlib.sha256(output.encode()).hexdigest(),
+            )
+        )
         event(db, value, "mission.completed", detail="Owner recorded an operational outcome")
         audit(db, p.user, "mission.completed", value.id)
         db.commit()
@@ -666,7 +729,10 @@ def install_operations(app, factory, settings):
             raise HTTPException(404, "Operation not found")
         if not db.execute(
             update(Operation)
-            .where(Operation.id == operation_id, Operation.status.in_(["draft", "pending"]))
+            .where(
+                Operation.id == operation_id,
+                Operation.status.in_(["draft", "pending", "failed", "blocked"]),
+            )
             .values(status="withdrawn")
         ).rowcount:
             raise HTTPException(409, "A dispatched or decided action cannot be withdrawn")
@@ -758,6 +824,43 @@ def install_operations(app, factory, settings):
         db.expire_all()
         return operation_view(db, db.get(Operation, operation_id), p.user)
 
+    @router.post("/operations/{operation_id}/reconcile")
+    def operation_reconcile(
+        operation_id: str, p=Depends(principal), db: Session = Depends(session)
+    ):
+        browser_only(p)
+        value = db.get(Operation, operation_id)
+        if (
+            not value
+            or value.org_id != p.user.org_id
+            or not (value.requester_id == p.user.id or review_allowed(value, p.user))
+        ):
+            raise HTTPException(404, "Operation not found")
+        if value.status != "uncertain":
+            raise HTTPException(409, "Only uncertain deliveries require reconciliation")
+        connector = db.get(Connector, value.connector_id)
+        if not connector or connector.org_id != value.org_id:
+            raise HTTPException(409, "The original connector is unavailable")
+        try:
+            receipt = reconcile_external(settings, connector, value.id)
+        except ConnectorError:
+            raise HTTPException(
+                502, "Receipt verification is unavailable; keep the operation uncertain"
+            ) from None
+        if receipt:
+            value.status = "succeeded"
+            value.result_json = json.dumps(receipt)
+            audit(db, p.user, "operation.receipt_verified", value.id)
+            event(db, db.get(Mission, value.mission_id), "operation.reconciled", detail=value.id)
+            db.commit()
+        return {
+            "status": value.status,
+            "verified": bool(receipt),
+            "message": "Correlated receipt verified"
+            if receipt
+            else "No unique receipt found in the latest 100 records. This is not proof that delivery failed",
+        }
+
     @router.get("/work-items")
     def work_items(p=Depends(principal), db: Session = Depends(session)):
         return [
@@ -800,6 +903,12 @@ def install_operations(app, factory, settings):
         if body.status == "done" and len(body.outcome) < 10:
             raise HTTPException(422, "Record a concrete outcome before marking done")
         value.status, value.outcome, value.updated = body.status, body.outcome, time.time()
+        linked = db.get(Mission, db.get(Operation, value.operation_id).mission_id)
+        if body.status != "done" and linked.status == "completed":
+            linked.status = "active_work"
+            event(
+                db, linked, "mission.work_reopened", detail="Previously completed work was reopened"
+            )
         audit(db, p.user, "work_item.updated", value.id)
         db.commit()
         return {"ok": True}
@@ -903,9 +1012,12 @@ def install_operations(app, factory, settings):
         hook = db.get(IncomingHook, hook_id)
         if not hook or not hook.enabled:
             raise HTTPException(404, "Hook not found")
-        raw = await request.body()
-        if len(raw) > 16000:
-            raise HTTPException(413, "Event body too large")
+        raw = bytearray()
+        async for chunk in request.stream():
+            raw.extend(chunk)
+            if len(raw) > 16000:
+                raise HTTPException(413, "Event body too large")
+        raw = bytes(raw)
         timestamp = request.headers.get("x-aivora-timestamp", "")
         if not timestamp.isdigit() or abs(time.time() - int(timestamp)) > 300:
             raise HTTPException(401, "Expired or invalid timestamp")

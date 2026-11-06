@@ -12,6 +12,12 @@ AI mode makes separate real model calls for the specialists. Evidence mode is ex
 
 ## Working capabilities
 
+- Configurable specialist teams with a real coordinator → parallel research/analysis → planner → reviewer → writer graph. The coordinator selects typed read tools; code resolves authorized resources.
+- Private missions, durable agent checkpoints, quota backoff, bounded budgets, failure recovery, feedback refinement and immutable artifact history.
+- CSV analysis with code-computed metrics and grouped breakdowns; no model-generated Python/SQL executes.
+- Owner-reviewed drafts, separate approver decisions, internal work items, recorded outcomes and explicit objective closure.
+- GitHub/Slack adapters with encrypted credentials, fixed destinations, immutable arguments and uncertain-delivery reconciliation.
+- Recurring missions and signed, idempotent incoming event hooks for existing systems.
 - Isolated organization workspaces with employee, reviewer and administrator memberships; single-use, email-bound invitations and credential revocation on membership changes.
 - PDF/Markdown/text ingestion with organization, department or administrator visibility; version replacement and deletion.
 - A bounded **LangGraph** retrieval/answer/verification graph with citations and private conversations. Old answers are hidden when their sources change or become inaccessible.
@@ -21,7 +27,7 @@ AI mode makes separate real model calls for the specialists. Evidence mode is ex
 - Scoped, expiring, revocable **REST API tokens** and a **local stdio MCP bridge**. MCP can propose requests but cannot approve them.
 - Real run timings, reported tokens, persisted daily request quotas and redacted audit events. Password changes revoke all old credentials.
 
-Internal tickets and tasks are real persisted records. External Jira tickets, messages and access grants are not executed by this release.
+Internal tickets/work items are real persisted records. Configured GitHub and Slack adapters can perform real HTTP actions after approval; live external accounts were not used during verification. Jira and access-provisioning connectors are not provided. See [the complete operations guide](docs/MULTI_AGENT_OPERATIONS.md).
 
 ## Run
 
@@ -54,7 +60,7 @@ $env:PYTHONPATH = 'src'
 .\.venv\Scripts\python.exe -m aivora.seed
 ```
 
-This creates fictional technology and education organizations, documents, employee/admin accounts, pending requests and schedules. Random passwords are printed once; existing demo accounts are unchanged.
+This creates fictional technology and education organizations, procedures, a 12-case operations dataset, six-agent evidence-mode missions, employee/admin accounts, pending requests and schedules. Random passwords are printed once; existing accounts are unchanged. `python scripts/demo_check.py` verifies repeatability and the independent worker without printing credentials.
 
 Run unattended automations in a second terminal:
 
@@ -65,9 +71,9 @@ $env:PYTHONPATH = 'src'
 
 ## Cloud generation
 
-In the ignored `.env`, set `AIVORA_PROVIDER=groq` and `GROQ_API_KEY`, or `AIVORA_PROVIDER=gemini` and `GOOGLE_API_KEY`. Set `AIVORA_MODEL` to an available model ID for your account and restart. Questions and retrieved passages are sent to that provider.
+Configure the organization's provider, model ID and API key in **Agent Studio**. Credentials are encrypted server-side and versioned. The ignored `.env` can alternatively provide development defaults: `AIVORA_PROVIDER=groq` / `GROQ_API_KEY`, or `gemini` / `GOOGLE_API_KEY`, plus `AIVORA_MODEL`. Selected questions, evidence and agent context are sent to that provider.
 
-Adapters have mocked contract tests; live-account inference is separate validation. Offline mode returns labeled source passages, not LLM-generated answers. No supplied API keys are stored in this repository or its runtime configuration.
+Six actual Groq specialists have completed a synthetic mission, including checkpointed quota recovery. Gemini remains contract-tested rather than live-validated. The opt-in `scripts/live_mission_check.py` uses hidden key input and a temporary synthetic organization. Evidence mode is deterministic and never presented as AI reasoning. No supplied API keys are committed or retained in this checkout's runtime configuration.
 
 ## Container pilot
 
@@ -84,6 +90,7 @@ Web binds to loopback port 8090. The scheduler shares a durable database volume.
 $env:PYTHONPATH = 'src'
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe scripts/evaluate.py
+.\.venv\Scripts\python.exe scripts/demo_check.py
 .\.venv\Scripts\python.exe tests/mcp_e2e.py
 .\.venv\Scripts\python.exe tests/browser_e2e.py
 node --check src/aivora/static/app.js
@@ -96,6 +103,8 @@ Browser tests use installed Chrome or Playwright Chromium (`python -m playwright
 | Guide | Purpose |
 | --- | --- |
 | [Adoption](docs/ADOPTION.md) | Fit AIVORA into processes and existing applications |
+| [Multi-agent operations](docs/MULTI_AGENT_OPERATIONS.md) | Objective-to-outcome system, recovery and integrations |
+| [LISA lessons](docs/LISA_LESSONS.md) | How actual startup patterns informed the generalized design |
 | [Implemented architecture](docs/IMPLEMENTATION.md) | Shipped design, code map and tradeoffs |
 | [Operations](docs/OPERATIONS.md) | Scheduler, backup, privacy and production requirements |
 | [MCP](docs/MCP.md) | Connect an MCP-capable client |
@@ -107,4 +116,4 @@ Browser tests use installed Chrome or Playwright Chromium (`python -m playwright
 
 This is independently implemented in a separate repository. Existing LARK/LISA files were read-only references; no company source or customer data was copied. Local private data is ignored under `data/`. A OneDrive checkout follows its existing synchronization policy; set a different `AIVORA_DATABASE_URL` if needed.
 
-Database RLS, pgvector indexes, enterprise OIDC/SSO, Redis caching/shared rate limits, OpenTelemetry export, hosted OAuth MCP and live Jira/Slack connectors are **not implemented**. Retrieval scans the accessible corpus in process; enterprise-scale capacity has not been established. Trademark availability has not been checked.
+Database RLS, pgvector indexes, enterprise OIDC/SSO, shared Redis traffic controls, OpenTelemetry export, hosted OAuth MCP and a Jira connector are **not implemented**. GitHub/Slack adapters are implemented and contract-tested; live-account validation remains required for your targets. Retrieval scans the accessible corpus in process; enterprise-scale capacity has not been established. Trademark availability has not been checked.

@@ -1,5 +1,7 @@
 # Adopting AIVORA
 
+For v0.2, start with a cross-department business objective rather than a single FAQ. In Mission Control, select a template such as a bottleneck investigation, customer escalation, project launch or management review. Attach the relevant dataset and tools, configure the organization's model in Agent Studio, inspect specialist outputs, refine the plan if needed, submit exact actions for separate review, then track work and record the observed outcome. See the [full operations guide](MULTI_AGENT_OPERATIONS.md).
+
 Start with one repeated knowledge question and one repeatable request process.
 
 | Organization | Knowledge problem | Workflow | Automation |

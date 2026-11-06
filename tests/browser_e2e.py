@@ -58,7 +58,7 @@ def run():
                 owner.get_by_label("Password", exact=True).fill("browser-test-password-123")
                 owner.locator("#auth-form button[type=submit]").click()
                 expect(
-                    owner.get_by_role("heading", name="Good to see you, Taylor.")
+                    owner.get_by_role("heading", name="From objective to accountable work.")
                 ).to_be_visible()
                 owner.locator('[data-nav="knowledge"]').click()
                 owner.get_by_role("button", name="Add document").click()
@@ -98,7 +98,7 @@ def run():
                 employee.get_by_label("Password", exact=True).fill("browser-test-password-456")
                 employee.get_by_role("button", name="Accept invitation").click()
                 expect(
-                    employee.get_by_role("heading", name="Good to see you, Jordan.")
+                    employee.get_by_role("heading", name="From objective to accountable work.")
                 ).to_be_visible()
                 expect(employee.locator('[data-nav="team"]')).to_have_count(0)
                 employee.locator('[data-nav="workflows"]').click()
@@ -205,6 +205,13 @@ def run():
                 )
                 owner.get_by_role("button", name="Record work update").click()
                 expect(owner.locator("#main")).to_contain_text("Confirmed support ownership")
+                employee.locator('[data-nav="missions"]').click()
+                employee.get_by_role("button", name="Record outcome & close").click()
+                employee.get_by_label("Observed outcome").fill(
+                    "Recorded the measured support ownership review and confirmed the operational handoff change with accountable teams."
+                )
+                employee.get_by_role("button", name="Close objective with outcome").click()
+                expect(employee.locator(".agent-metrics .badge.completed")).to_be_visible()
                 employee.locator('[data-nav="mission_triggers"]').click()
                 employee.get_by_role("button", name="Schedule a mission").click()
                 employee.get_by_label("Name", exact=True).fill("Daily support review")
@@ -236,7 +243,7 @@ def run():
                 owner.get_by_label("Password", exact=True).fill("browser-test-password-456")
                 owner.locator("#auth-form button[type=submit]").click()
                 expect(
-                    owner.get_by_role("heading", name="Good to see you, Jordan.")
+                    owner.get_by_role("heading", name="From objective to accountable work.")
                 ).to_be_visible()
                 assert len(held) == 1
                 held[0].fulfill(
@@ -256,7 +263,7 @@ def run():
             thread.join(timeout=10)
             sock.close()
     print(
-        "PASS: browser onboarding, ingestion, cited answer, source preview, invitation, employee request, separate approval, ticket resolution, automation, token creation/revocation, settings, audit and responsive layout"
+        "PASS: browser onboarding, ingestion, citations, six-agent mission, dataset analysis, separate action approval, work outcomes, objective closure, recurring missions, tickets, tokens, audit, session isolation and responsive layout"
     )
 
 

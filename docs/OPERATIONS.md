@@ -1,5 +1,7 @@
 # Operations and production gates
 
+v0.2 adds the multi-agent runtime described in [Multi-agent operations](MULTI_AGENT_OPERATIONS.md). The worker now checks queues every two seconds, runs due mission schedules, processes leased agent graphs and dispatches approved actions. The older document-review/approval-reminder automations remain available. GitHub/Slack writes use durable dispatch records and correlated-receipt reconciliation; they are no longer merely planned adapters.
+
 ## Processes and schedules
 
 Run the web process with `python -m uvicorn aivora.main:app --host 127.0.0.1 --port 8090` and the worker separately with `python -m aivora.worker`, with `PYTHONPATH=src`.
@@ -29,7 +31,7 @@ To restore, stop web/worker processes and point `AIVORA_DATABASE_URL` to a copy 
 
 ## Production gates
 
-`AIVORA_ENV=production` intentionally refuses startup. Before real production traffic, implement and independently validate:
+`AIVORA_ENV=production` intentionally refuses startup. The following remain deployment requirements even though v0.2 has a complete functional mission lifecycle. Before real production traffic, implement and independently validate:
 
 1. PostgreSQL migrations, non-owner role, FORCE RLS and tenant context across requests/workers, with negative tests.
 2. Enterprise OIDC/SSO, verified membership provisioning, recovery and applicable MFA/session policies.

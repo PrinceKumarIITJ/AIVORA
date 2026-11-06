@@ -7,9 +7,9 @@ import threading
 from .automation import run_due
 from .config import Settings
 from .db import database
-from .operations.scheduler import run_mission_schedules
-from .operations.runtime import run_queued
 from .operations.execution import run_approved
+from .operations.runtime import run_queued
+from .operations.scheduler import run_mission_schedules
 
 
 def main():

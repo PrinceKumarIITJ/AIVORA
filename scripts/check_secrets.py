@@ -18,7 +18,11 @@ def main():
     failures = []
     for name in filter(None, names):
         path = Path(name)
-        if path.name == ".env" or (path.name.startswith(".env.") and path.name != ".env.example"):
+        if (
+            path.suffix == ".key"
+            or path.name == ".env"
+            or (path.name.startswith(".env.") and path.name != ".env.example")
+        ):
             failures.append(name)
         if path.is_file():
             text = path.read_text(encoding="utf-8", errors="replace")

@@ -10,6 +10,9 @@ Start AIVORA, sign in as the actual user and create a minimally scoped token in 
 | `ask_knowledge` | `knowledge:read`, `chat:write` | Private Q&A persistence; consumes quota |
 | `list_workflows` | `workflows:read` | Organization request categories |
 | `propose_request` | `actions:write` | Pending proposal; stable caller-generated key required for retries |
+| `list_agent_teams` | `missions:read`, `knowledge:read` | Discover configured specialist teams |
+| `start_mission` | `missions:write`, `knowledge:read` | Queue a private, bounded multi-agent objective |
+| `mission_status` | `missions:read`, `knowledge:read` | Read owner-scoped outputs, source ledger and action receipts |
 
 User input cannot choose a destination URL, organization ID or role. The bridge permits local HTTP or configured HTTPS. Tools do not approve, delete, run shell commands or make arbitrary HTTP calls. A proposal is not an executed ticket: a separate reviewer decides in AIVORA.
 

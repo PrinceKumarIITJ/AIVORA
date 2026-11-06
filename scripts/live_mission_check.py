@@ -36,6 +36,12 @@ def main():
                     str(result.json().get("error", {}).get("message", ""))[:600],
                     flush=True,
                 )
+                if result.status_code == 400:
+                    print(
+                        "SYNTHETIC_GENERATION_DIAGNOSTIC",
+                        str(result.json().get("error", {}).get("failed_generation", ""))[:3000],
+                        flush=True,
+                    )
             return result
 
         httpx.Client.post = diagnostic_post
@@ -114,12 +120,18 @@ def main():
                 )
                 assert mission.status_code == 201, mission.text
                 result = c.post("/api/ops/missions/" + mission.json()["id"] + "/run").json()
-                deadline=time.monotonic()+240
-                while result["status"]=="waiting_provider" and time.monotonic()<deadline:
-                    delay=max(1,min(30,result["retry_at"]-time.time()+1))
-                    print("PROVIDER_BACKOFF",round(delay),"seconds; completed checkpoints",result["completed_agents"],flush=True)
+                deadline = time.monotonic() + 360
+                while result["status"] == "waiting_provider" and time.monotonic() < deadline:
+                    delay = max(1, min(30, result["retry_at"] - time.time() + 1))
+                    print(
+                        "PROVIDER_BACKOFF",
+                        round(delay),
+                        "seconds; completed checkpoints",
+                        result["completed_agents"],
+                        flush=True,
+                    )
                     time.sleep(delay)
-                    result=c.post("/api/ops/missions/"+mission.json()["id"]+"/run").json()
+                    result = c.post("/api/ops/missions/" + mission.json()["id"] + "/run").json()
                 print(
                     "MISSION",
                     result["status"],

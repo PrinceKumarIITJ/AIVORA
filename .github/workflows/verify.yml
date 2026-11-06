@@ -30,6 +30,7 @@ jobs:
       - run: node --check src/aivora/static/operations.js
       - run: python tests/mcp_e2e.py
       - run: python scripts/evaluate.py
+      - run: python scripts/demo_check.py
   browser:
     runs-on: ubuntu-latest
     env:

@@ -25,7 +25,14 @@ def review_allowed(operation, user):
 def valid_requester(db, operation):
     user = db.get(User, operation.requester_id)
     mission = db.get(Mission, operation.mission_id)
-    if not user or not user.active or not context_valid(db, user, json.loads(mission.context_json)):
+    if (
+        not user
+        or not user.active
+        or not mission
+        or mission.status in {"cancelled", "cancelling"}
+        or user.org_id != operation.org_id
+        or not context_valid(db, user, json.loads(mission.context_json))
+    ):
         return False
     canonical = json.dumps(
         json.loads(operation.arguments_json), sort_keys=True, separators=(",", ":")

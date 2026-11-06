@@ -1,5 +1,7 @@
 # Shipped architecture
 
+The current v0.2 architecture is described in [Multi-agent operations](MULTI_AGENT_OPERATIONS.md): a configurable specialist DAG, coordinator-selected read tools, quantitative datasets, durable checkpoints and artifact versions, model profiles, feedback rounds, approved connector actions, work outcomes, recurring missions and signed events. The foundation diagram and decisions below describe the earlier knowledge path, which remains available alongside Mission Control.
+
 ```mermaid
 flowchart LR
   UI[Browser workspace] --> API[FastAPI: session, CSRF, role/scope policies]

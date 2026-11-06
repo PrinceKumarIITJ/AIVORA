@@ -38,6 +38,18 @@
   const userAdmin = () => state.me?.user.role === "admin";
   const opPost = (path, body) =>
     api("/ops" + path, { method: "POST", ...(body ? { body } : {}) });
+  function receiptButton(container, operation, refresh) {
+    if (operation.status !== "uncertain") return;
+    const button = document.createElement("button");
+    button.className = "button secondary small";
+    button.textContent = "Verify correlated receipt";
+    button.onclick = handle(async () => {
+      const result = await opPost("/operations/" + operation.id + "/reconcile");
+      toast(result.message, !result.verified);
+      await refresh();
+    });
+    container.append(button);
+  }
   const openMission = async (id) => {
     ops.selected = id;
     await navigate("missions");
@@ -285,7 +297,8 @@
     }
     document.querySelectorAll(".operation-card").forEach((card, index) => {
       const o = m.operations[index];
-      if (o && ["draft", "pending"].includes(o.status)) {
+      if (o) receiptButton(card, o, () => showMission(id));
+      if (o && ["draft", "pending", "failed", "blocked"].includes(o.status)) {
         const button = document.createElement("button");
         button.className = "text-button";
         button.textContent = "Withdraw this proposal";
@@ -422,7 +435,9 @@
       await api("/ops/model", { method: "PUT", body: v });
       f.reset();
       toast("Encrypted company model configuration saved");
-      await pages.agent_studio();
+      state.me = await api("/me");
+      state.csrf = state.me.csrf;
+      await navigate("agent_studio");
     });
   };
 
@@ -561,6 +576,11 @@
           });
         }),
     );
+    document
+      .querySelectorAll(".operation-card")
+      .forEach((card, index) =>
+        receiptButton(card, operations[index], pages.op_approvals),
+      );
   };
 
   pages.work_board = async () => {
