@@ -4,6 +4,7 @@ This is not a remote OAuth MCP server. Never run it with an admin browser cookie
 """
 
 import os
+import uuid
 from typing import Literal
 from urllib.parse import urlsplit
 
@@ -107,6 +108,59 @@ def propose_request(
             "idempotency_key": request_key,
         },
     )
+
+
+@mcp.tool(
+    annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False)
+)
+def list_agent_teams() -> list:
+    """List configured specialist teams for the authenticated organization. Requires missions:read."""
+    return call("GET", "/api/ops/teams")
+
+
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False
+    )
+)
+def start_mission(
+    title: str,
+    objective: str,
+    request_key: str,
+    team_id: str = "default",
+    mode: Literal["ai", "evidence"] = "ai",
+    dataset_ids: list[str] | None = None,
+) -> dict:
+    """Queue a private multi-agent business mission after the user requests it. Requires missions:write.
+
+    AI mode requires a configured company model. Evidence mode is deterministic, not AI reasoning.
+    The worker runs the team. Draft actions cannot execute without owner submission and separate human approval.
+    Reuse the exact request_key and arguments when retrying.
+    """
+    return call(
+        "POST",
+        "/api/ops/missions",
+        {
+            "title": title,
+            "objective": objective,
+            "request_key": request_key,
+            "team_id": team_id,
+            "mode": mode,
+            "dataset_ids": dataset_ids or [],
+        },
+    )
+
+
+@mcp.tool(
+    annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False)
+)
+def mission_status(mission_id: str) -> dict:
+    """Read this user's mission status, evidence-backed agent outputs and action receipts. Requires missions:read."""
+    try:
+        value = str(uuid.UUID(mission_id))
+    except ValueError:
+        raise ToolError("Mission ID must be a UUID") from None
+    return call("GET", "/api/ops/missions/" + value)
 
 
 if __name__ == "__main__":

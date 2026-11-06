@@ -218,6 +218,8 @@ class Task(Base):
 
 
 def database(url):
+    from .operations import models as _operation_models  # noqa: F401
+
     kwargs = {"pool_pre_ping": True}
     if url.startswith("sqlite"):
         if url.startswith("sqlite:///./"):

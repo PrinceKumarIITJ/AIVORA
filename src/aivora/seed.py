@@ -18,6 +18,7 @@ from .db import (
     database,
 )
 from .security import password_hash
+from .operations.demo import seed_operations
 
 GUIDES = {
     "Employee handbook": "Annual leave allowance is {days} days per calendar year. Request leave through your manager. New employees complete security training and meet their buddy in the first week. Remote work requires manager approval. This is fictional demonstration policy.",
@@ -37,7 +38,10 @@ def main():
             ("acme", "Acme Studio", "Technology", 21),
             ("northstar", "Northstar Academy", "Education", 12),
         ]:
-            if db.scalar(select(User.id).where(User.email == f"admin@{slug}.example")):
+            existing=db.scalar(select(User).where(User.email==f"admin@{slug}.example"))
+            if existing:
+                requester=db.scalar(select(User).where(User.email==f"employee@{slug}.example")) or existing
+                seed_operations(db,db.get(Organization,existing.org_id),requester,settings)
                 continue
             org = Organization(name=name, industry=industry)
             db.add(org)
@@ -62,6 +66,7 @@ def main():
                 description="Request software, access or device support.",
                 department="IT",
             )
+            seed_operations(db,org,users[1],settings)
             db.add_all(
                 [
                     support,

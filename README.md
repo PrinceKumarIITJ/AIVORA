@@ -1,10 +1,14 @@
 # AIVORA
 
-**Organization knowledge. Accountable action.**
+**An organization-neutral multi-agent operations platform.**
 
-A self-hosted AI workspace for organizations that lose time finding trusted information, routing service requests and chasing overdue approvals. Companies configure their own departments, knowledge and request categories rather than receiving a fintech-specific assistant.
+AIVORA takes a business objective through research, quantitative analysis, operational planning, independent review, approved execution and recorded outcomes. Organizations configure specialist teams, connect their own knowledge/data/tools, inspect versioned artifacts and run missions manually, on a schedule or from signed business events.
 
-**v0.1: working local pilot.** The application, automation worker, MCP integration, tests and container setup are included. The enterprise target architecture is broader than this release: production hardening, enterprise SSO and external SaaS connectors remain explicitly tracked work.
+**v0.2: multi-agent operations release.** Six specialist agents run as a configurable LangGraph dependency graph, with parallel research/analysis, durable checkpoints, bounded budgets, quota backoff, human feedback and versioned artifacts. The browser includes Mission Control, Agent Studio, Business Data, Connected Tools, Action Approvals, Work Board and Mission Triggers, alongside the earlier knowledge workspace.
+
+Example objective: **“Investigate support bottlenecks from our procedures and operational data, quantify what is observable, propose a cross-department improvement plan, create approved follow-up work and record what changed.”** The same engine supports incident investigations, launch coordination, onboarding and management reviews through configurable teams and mission templates.
+
+AI mode makes separate real model calls for the specialists. Evidence mode is explicitly deterministic and does not claim AI reasoning. A real six-agent Groq mission has been exercised using fictional data. This is a self-hosted application release, not a claim of audited enterprise production readiness; SSO, database RLS and deployment/load hardening remain tracked requirements.
 
 ## Working capabilities
 

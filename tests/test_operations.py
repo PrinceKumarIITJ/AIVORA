@@ -65,3 +65,17 @@ def test_production_does_not_silently_start_local_pilot(monkeypatch):
     monkeypatch.setenv("AIVORA_ENV", "production")
     with pytest.raises(ValueError):
         Settings.from_env()
+
+
+def test_backup_restores_encrypted_company_credentials(app,owner,tmp_path):
+    assert owner.put('/api/ops/model',json={'provider':'groq','model':'test-model','api_key':'fake-backup-provider-secret'}).status_code==200
+    target=tmp_path/'separate-restore'/'workspace.db'
+    backup(app.state.engine.url.database,target)
+    assert (target.parent/'.aivora-secrets.key').is_file()
+    restored=create_app(Settings(database_url='sqlite:///'+target.as_posix()))
+    with TestClient(restored) as c:
+        login=c.post('/api/auth/login',json={'email':'owner@acme.test','password':PASSWORD})
+        assert login.status_code==200
+        c.headers['x-csrf-token']=login.json()['csrf']
+        assert c.get('/api/ops/catalog').json()['ai_ready']
+    restored.state.engine.dispose()

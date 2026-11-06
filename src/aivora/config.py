@@ -17,6 +17,7 @@ class Settings:
     google_key: str = ""
     daily_limit: int = 100
     semantic_model: str = ""
+    credential_key: str = ""
 
     @classmethod
     def from_env(cls):
@@ -33,6 +34,7 @@ class Settings:
             google_key=os.getenv("GOOGLE_API_KEY", ""),
             daily_limit=int(os.getenv("AIVORA_DAILY_REQUEST_LIMIT", "100")),
             semantic_model=os.getenv("AIVORA_SEMANTIC_MODEL", ""),
+            credential_key=os.getenv("AIVORA_CREDENTIAL_KEY", ""),
         )
         if settings.provider not in {"extractive", "groq", "gemini"}:
             raise ValueError("Unsupported AIVORA_PROVIDER")
@@ -45,6 +47,6 @@ class Settings:
                 raise ValueError("Disable public organization signup for production")
             # SQLite has no database-level tenant isolation; do not imply otherwise.
             raise ValueError(
-                "v0.1 is a local pilot; production requires the hardening gates in docs/OPERATIONS.md"
+                "v0.2 requires production hardening; production requires the hardening gates in docs/OPERATIONS.md"
             )
         return settings

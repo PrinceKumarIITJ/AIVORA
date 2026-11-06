@@ -153,8 +153,10 @@ class TokenInput(Input):
             "actions:read",
             "actions:write",
             "workflows:read",
+            "missions:read",
+            "missions:write",
         ]
-    ] = Field(min_length=1, max_length=5)
+    ] = Field(min_length=1, max_length=7)
     days: int = Field(default=30, ge=1, le=90)
 
 
@@ -180,7 +182,7 @@ def create_app(settings=None):
 
     app = FastAPI(
         title="AIVORA Workspace API",
-        version="0.1.0",
+        version="0.2.0",
         lifespan=lifespan,
         docs_url=None,
         redoc_url=None,
@@ -231,6 +233,9 @@ def create_app(settings=None):
         queue.append(now)
 
     def profile(db, p):
+        from .operations.model_config import resolve_settings
+
+        runtime_settings, _ = resolve_settings(db, settings, p.user.org_id)
         user = p.user
         org = db.get(Organization, user.org_id)
         return {
@@ -249,8 +254,8 @@ def create_app(settings=None):
                 "guidance": org.guidance,
             },
             "csrf": p.credential.csrf if p.credential.kind == "session" else "",
-            "provider": settings.provider,
-            "model": settings.model,
+            "provider": runtime_settings.provider,
+            "model": runtime_settings.model,
             "retrieval": "hybrid-local" if settings.semantic_model else "bm25",
             "daily_limit": settings.daily_limit,
         }
@@ -326,11 +331,11 @@ def create_app(settings=None):
     @app.get("/api/health")
     def health(db: Session = Depends(db_session)):
         db.execute(select(1))
-        return {"status": "ok", "version": "0.1.0", "environment": settings.environment}
+        return {"status": "ok", "version": "0.2.0", "environment": settings.environment}
 
     @app.get("/api/config")
     def public_config():
-        return {"allow_signup": settings.allow_signup, "version": "0.1.0"}
+        return {"allow_signup": settings.allow_signup, "version": "0.2.0"}
 
     @app.post("/api/auth/signup", status_code=201)
     def signup(
@@ -664,6 +669,9 @@ def create_app(settings=None):
         return {"ok": True}
 
     def chat_run(body, p, db):
+        from .operations.model_config import resolve_settings
+
+        runtime_settings, _ = resolve_settings(db, settings, p.user.org_id)
         require_scope(p, "chat:write")
         require_scope(p, "knowledge:read")
         started = time.perf_counter()
@@ -703,8 +711,8 @@ def create_app(settings=None):
         run = Run(
             org_id=p.user.org_id,
             user_id=p.user.id,
-            provider=settings.provider,
-            model=settings.model,
+            provider=runtime_settings.provider,
+            model=runtime_settings.model,
         )
         db.add(run)
         db.flush()
@@ -714,7 +722,7 @@ def create_app(settings=None):
                 db,
                 p.user,
                 db.get(Organization, p.user.org_id),
-                settings,
+                runtime_settings,
                 body.question,
                 generate,
             )
@@ -774,7 +782,7 @@ def create_app(settings=None):
                 {"name": "retrieve", "ms": retrieval_ms, "chunks": len(sources)},
                 {
                     "name": "generate",
-                    "provider": settings.provider,
+                    "provider": runtime_settings.provider,
                     "prompt_version": PROMPT_VERSION,
                 },
                 {"name": "verify_citations", "route": result["route"]},
@@ -788,9 +796,9 @@ def create_app(settings=None):
             "citations": citations,
             "conversation_id": conversation.id,
             "run_id": run.id,
-            "provider": settings.provider,
+            "provider": runtime_settings.provider,
             "latency_ms": run.latency_ms,
-            "mode": "extractive" if settings.provider == "extractive" else "generated",
+            "mode": "extractive" if runtime_settings.provider == "extractive" else "generated",
         }
 
     @app.post("/api/chat")
@@ -1241,6 +1249,9 @@ def create_app(settings=None):
             )
         ]
 
+    from .operations.api import install_operations
+
+    install_operations(app, factory, settings)
     app.mount("/static", StaticFiles(directory=static), name="static")
 
     @app.get("/", include_in_schema=False)

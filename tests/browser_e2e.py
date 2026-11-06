@@ -144,6 +144,76 @@ def run():
                 expect(owner.get_by_label("Assistant name")).to_have_value("Studio Guide")
                 owner.locator('[data-nav="audit"]').click()
                 expect(owner.locator("#main")).to_contain_text("action.approve")
+                # The full multi-agent operations flow uses actual CSV statistics and durable actions.
+                owner.locator('[data-nav="business_data"]').click()
+                owner.get_by_role("button", name="Upload dataset").click()
+                owner.get_by_label("Dataset title").fill("Support operations evidence")
+                owner.locator('input[type="file"]').set_input_files(
+                    {
+                        "name": "support.csv",
+                        "mimeType": "text/csv",
+                        "buffer": b"department,status,hours\nSupport,pending,12\nSupport,pending,8\nOperations,done,2\n",
+                    }
+                )
+                owner.get_by_role("button", name="Upload and profile").click()
+                expect(
+                    owner.get_by_role("heading", name="Support operations evidence")
+                ).to_be_visible()
+                employee.locator('[data-nav="missions"]').click()
+                employee.get_by_role("button", name="New mission", exact=False).click()
+                employee.get_by_label("Mission title").fill(
+                    "Resolve cross-team support bottlenecks"
+                )
+                employee.get_by_label("Business objective").fill(
+                    "Analyze support operations data and available procedure evidence. Identify observed bottlenecks, missing information and a cross-department improvement plan with trackable work."
+                )
+                employee.get_by_label("Business dataset (optional)").select_option(
+                    label="Support operations evidence · 3 rows"
+                )
+                employee.get_by_label("Group rows by").select_option("department")
+                employee.get_by_label("Numeric metric").select_option("hours")
+                employee.get_by_role("button", name="Create mission", exact=True).click()
+                employee.get_by_role("button", name="Run now", exact=True).click()
+                expect(employee.locator(".agent-node.completed")).to_have_count(6, timeout=15000)
+                expect(employee.locator("#main")).to_contain_text("review_required")
+                employee.locator('[data-agent="analyze"]').click()
+                expect(employee.locator("#dialog-body")).to_contain_text("total 22")
+                employee.get_by_role("button", name="Close", exact=True).click()
+                artifacts = Path("artifacts/screenshots")
+                artifacts.mkdir(parents=True, exist_ok=True)
+                employee.screenshot(
+                    path=str(artifacts / "mission-control-desktop.png"), full_page=True
+                )
+                employee.get_by_role("button", name="Review & submit for approval").first.click()
+                employee.get_by_role("checkbox").check()
+                employee.get_by_role("button", name="Submit exact action").click()
+                expect(employee.locator(".badge.awaiting_approval")).to_be_visible()
+                owner.locator('[data-nav="op_approvals"]').click()
+                owner.get_by_role("button", name="Approve & execute", exact=True).click()
+                owner.get_by_label("Reviewer note").fill(
+                    "Reviewed the operational evidence and approved internal follow-up."
+                )
+                owner.get_by_role(
+                    "button", name="Approve & execute exact action", exact=True
+                ).click()
+                expect(owner.locator("#main")).to_contain_text("succeeded")
+                owner.locator('[data-nav="work_board"]').click()
+                owner.get_by_role("button", name="Update status & outcome").click()
+                owner.get_by_label("Status", exact=True).select_option("done")
+                owner.get_by_label("Concrete outcome or blocker").fill(
+                    "Confirmed support ownership and recorded the agreed process change with the operations team."
+                )
+                owner.get_by_role("button", name="Record work update").click()
+                expect(owner.locator("#main")).to_contain_text("Confirmed support ownership")
+                employee.locator('[data-nav="mission_triggers"]').click()
+                employee.get_by_role("button", name="Schedule a mission").click()
+                employee.get_by_label("Name", exact=True).fill("Daily support review")
+                employee.get_by_role("button", name="Create recurring mission").click()
+                expect(employee.locator("#main")).to_contain_text("Daily support review")
+                owner.locator('[data-nav="agent_studio"]').click()
+                expect(
+                    owner.get_by_role("heading", name="Cross-department operations", exact=True)
+                ).to_be_visible()
                 owner.locator('[data-nav="overview"]').click()
                 artifacts = Path("artifacts/screenshots")
                 artifacts.mkdir(parents=True, exist_ok=True)
